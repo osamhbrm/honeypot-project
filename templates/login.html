@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>تسجيل الدخول - لوحة الإدارة</title>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700&display=swap" rel="stylesheet">
+    <!-- FontAwesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/login.css') }}">
+</head>
+<body>
+    <div class="login-container">
+        <div class="login-box">
+            <div class="login-header">
+                <i class="fa-solid fa-shield-halved security-icon"></i>
+                <h2>تسجيل دخول المسؤول</h2>
+                <p>يرجى إدخال بيانات الاعتماد للوصول إلى لوحة التحكم</p>
+                {% if error %}
+                <div style="color: #ff4d4d; background: rgba(255, 77, 77, 0.1); padding: 10px; border-radius: 5px; margin-top: 15px; font-weight: bold; border: 1px solid #ff4d4d;">
+                    {{ error }}
+                </div>
+                {% endif %}
+            </div>
+            
+            <form method="POST" action="/login" class="login-form">
+                <div class="input-group">
+                    <i class="fa-solid fa-user input-icon"></i>
+                    <input type="text" name="username" placeholder="اسم المستخدم" required autocomplete="off">
+                </div>
+                
+                <div class="input-group">
+                    <i class="fa-solid fa-lock input-icon"></i>
+                    <input type="password" name="password" placeholder="كلمة المرور" required>
+                </div>
+
+                <div class="form-actions">
+                    <label class="remember-me">
+                        <input type="checkbox" name="remember">
+                        <span>تذكرني</span>
+                    </label>
+                    <a href="#" class="forgot-password">نسيت كلمة المرور؟</a>
+                </div>
+                
+                <button type="submit" class="login-btn">
+                    <span>تسجيل الدخول</span>
+                    <i class="fa-solid fa-arrow-left"></i>
+                </button>
+            </form>
+
+            <div class="login-footer">
+                <p>ليس لديك حساب؟ <a href="#">إنشاء حساب جديد</a></p>
+            </div>
+        </div>
+        
+        <!-- Background Elements for Glassmorphism -->
+        <div class="shape shape-1"></div>
+        <div class="shape shape-2"></div>
+    </div>
+</body>
+</html>
