@@ -1,93 +1,55 @@
+# ==========================================
+# 1. Terraform (حساس جداً - أمن البنية التحتية)
+# ==========================================
+# منع رفع ملفات الحالة التي قد تحتوي على باسورداف أو أسرار مكشوفة
+*.tfstate
+*.tfstate.backup
+*.tfstate.lock.hcl
 
-### **3. `.gitignore`** (لتجاهل الملفات غير المرغوبة)
-```gitignore
-# Python
+# منع رفع مجلدات العمل المحلية الخاصة بـ Terraform
+.terraform/
+.terraform.lock.hcl
+
+# منع رفع ملفات المتغيرات الحساسة (إن وجدت مستقبلاً)
+*.tfvars
+*.tfvars.json
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+# ==========================================
+# 2. Python & Flask (بيئة التطوير والملفات المؤقتة)
+# ==========================================
 __pycache__/
 *.py[cod]
 *$py.class
-*.so
+.pytest_cache/
 .Python
-build/
-develop-eggs/
-dist/
-downloads/
-eggs/
-.eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-wheels/
-pip-wheel-metadata/
-share/python-wheels/
-*.egg-info/
-.installed.cfg
-*.egg
-MANIFEST
-
-# Virtual Environment
-venv/
 env/
+venv/
 ENV/
-env.bak/
-venv.bak/
+*.env
+.env
 
-# IDE
+# ==========================================
+# 3. Docker (ملفات النظام والبيانات الحية)
+# ==========================================
+# إذا كان لديك ملفات كاش أو Logs خاصة بـ Cowrie أو الـ Honeypot تظهر محلياً
+cowrie_logs/
+.docker/
+
+# ==========================================
+# 4. بيئات التطوير والأنظمة التشغيلية (OS & IDEs)
+# ==========================================
 .vscode/
 .idea/
-*.swp
-*.swo
-*~
-
-# Database
-*.db
-*.sqlite3
-honeypot.db
-
-# OS
 .DS_Store
-.DS_Store?
-._*
-.Spotlight-V100
-.Trashes
-ehthumbs.db
 Thumbs.db
 
-# Logs
-*.log
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-lerna-debug.log*
-
-# Environment variables
-.env
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
-
-# Temporary files
-*.tmp
-*.temp
-
-# Test coverage
-.coverage
-htmlcov/
-.pytest_cache/
-
-# Jupyter Notebook
-.ipynb_checkpoints
-
-# mypy
-.mypy_cache/
-.dmypy.json
-dmypy.json
-
-# Pyre type checker
-.pyre/
-
+# ==========================================
+# 5. ملفات الميديا والأرشيف المضغوطة
+# ==========================================
 # Archives
 *.7z
 *.dmg

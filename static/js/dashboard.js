@@ -1,9 +1,9 @@
-// تطبيق Dashboard
+// تطبيق Dashboard (النسخة الأصلية المدمجة مع Cowrie SSH والمراقبة الحية)
 const dashboard = {
     // الإعدادات
     config: {
         apiBase: '/api',
-        refreshInterval: 5000,
+        refreshInterval: 5000, // التحديث التلقائي المباشر كل 5 ثوانٍ للبيانات الحية
         itemsPerPage: 10,
         currentPage: 1,
         liveMode: true,
@@ -28,7 +28,7 @@ const dashboard = {
         // تحميل البيانات الأولية
         this.loadAllData();
 
-        // بدء التحديثات التلقائية
+        // بدء التحديثات التلقائية (المراقبة المباشرة)
         this.startAutoRefresh();
 
         // تحديث الوقت
@@ -45,8 +45,10 @@ const dashboard = {
                 this.config.liveMode = e.target.checked;
                 if (this.config.liveMode) {
                     this.startAutoRefresh();
+                    this.showAlert('تم تفعيل المراقبة الحية المباشرة', 'success');
                 } else {
                     this.stopAutoRefresh();
+                    this.showAlert('تم إيقاف المراقبة المباشرة مؤقتاً', 'warning');
                 }
             });
         }
@@ -63,13 +65,15 @@ const dashboard = {
             ]);
 
             this.updateLastUpdateTime();
+            const footerStatus = document.getElementById('footerStatus');
+            if (footerStatus) footerStatus.innerText = "الرصد مستقر ومباشر...";
         } catch (error) {
             console.error('Error loading data:', error);
-            this.showAlert('خطأ في تحميل البيانات', 'danger');
+            this.showAlert('خطأ في تحميل البيانات المباشرة', 'danger');
         }
     },
 
-    // تحميل الإحصائيات
+    // تحميل الإحصائيات الشاملة (Web + SSH)
     async loadStats() {
         try {
             const response = await axios.get(`${this.config.apiBase}/attacks/stats`);
@@ -83,7 +87,7 @@ const dashboard = {
         }
     },
 
-    // تحميل الهجمات الأخيرة
+    // تحميل الهجمات الأخيرة (تعرض في واجهة نظرة عامة)
     async loadRecentAttacks() {
         try {
             const response = await axios.get(`${this.config.apiBase}/attacks/recent?limit=5`);
@@ -97,16 +101,21 @@ const dashboard = {
         }
     },
 
-    // تحميل جميع الهجمات (للقسم الكامل)
-    async loadAllAttacksTable() {
+    // تحميل جميع الهجمات (للقسم الكامل مع التصفح الذكي)
+    async loadAllAttacksTable(filterType = 'all') {
         try {
-            const response = await axios.get(`${this.config.apiBase}/attacks?page=${this.config.currentPage}&per_page=${this.config.itemsPerPage}`);
+            let url = `${this.config.apiBase}/attacks?page=${this.config.currentPage}&per_page=${this.config.itemsPerPage}`;
+            if (filterType !== 'all') {
+                url += `&type=${encodeURIComponent(filterType)}`;
+            }
+            
+            const response = await axios.get(url);
             const data = response.data;
 
             // تحديث جدول الهجمات الكامل
             this.updateAllAttacksTable(data.attacks);
 
-            // تحديث الترقيم
+            // تحديث الترقيم (Pagination)
             this.updatePagination(data.total, data.pages);
 
         } catch (error) {
@@ -123,7 +132,7 @@ const dashboard = {
                 axios.get(`${this.config.apiBase}/attacks/daily`)
             ]);
 
-            // تحديث الرسوم البيانية
+            // تحديث الرسوم البيانية حياً
             this.updateHourlyChart(hourlyResponse.data);
             this.updateTypeChart(typeResponse.data);
             this.updateWeeklyChart(weeklyResponse.data);
@@ -133,7 +142,7 @@ const dashboard = {
         }
     },
 
-    // تحميل أكثر IPs نشاطاً
+    // تحميل أكثر IPs نشاطاً من المصيدتين
     async loadTopIPs() {
         try {
             const response = await axios.get(`${this.config.apiBase}/attacks/top-ips`);
@@ -143,7 +152,7 @@ const dashboard = {
         }
     },
 
-    // تحديث واجهة الإحصائيات
+    // تحديث واجهة الإحصائيات والبطاقات العلوية
     updateStatsUI() {
         const stats = this.state.stats;
 
@@ -157,11 +166,11 @@ const dashboard = {
         this.updateElement('totalAttacksBadge', stats.total || 0);
         this.updateElement('todayAttacksBadge', stats.today || 0);
 
-        // تحديث الإحصائيات المفصلة
+        // تحديث الإحصائيات مفصلة في تبويب الإحصائيات
         this.updateDetailedStats();
     },
 
-    // تحديث جدول الهجمات الأخيرة
+    // تحديث جدول الهجمات الأخيرة (نظرة عامة) - يدعم وسم الـ SSH والـ Web الملون
     updateRecentAttacksTable() {
         const tableBody = document.getElementById('recentAttacksTable');
         if (!tableBody) return;
@@ -170,30 +179,33 @@ const dashboard = {
             tableBody.innerHTML = `
                 <tr>
                     <td colspan="5" class="text-center text-muted">
-                        <i class="fas fa-inbox me-2"></i>
-                        لا توجد هجمات مسجلة
+                        <i class="fas fa-inbox me-2"></i>لا توجد هجمات مسجلة حالياً
                     </td>
-                </tr>
-            `;
+                </tr>`;
             return;
         }
 
-        tableBody.innerHTML = this.state.attacks.map(attack => `
+        tableBody.innerHTML = this.state.attacks.map(attack => {
+            const badgeSrc = attack.source === 'ssh' 
+                ? `<span class="badge bg-danger text-white ms-1"><i class="fas fa-terminal text-sm"></i> SSH</span>` 
+                : `<span class="badge bg-primary text-white ms-1"><i class="fas fa-globe text-sm"></i> Web</span>`;
+            
+            return `
             <tr>
                 <td>${this.formatTime(attack.timestamp)}</td>
-                <td><code>${attack.ip_address}</code></td>
+                <td><code>${attack.ip_address}</code> ${badgeSrc}</td>
                 <td>
                     <span class="attack-badge ${this.getAttackClass(attack.attack_type)}">
                         ${attack.attack_type}
                     </span>
                 </td>
                 <td>${attack.username || 'N/A'}</td>
-                <td><small>${attack.request_path}</small></td>
-            </tr>
-        `).join('');
+                <td class="text-truncate" style="max-width: 200px;" title="${attack.request_path}"><small>${attack.request_path}</small></td>
+            </tr>`;
+        }).join('');
     },
 
-    // تحديث جدول الهجمات الكامل
+    // تحديث جدول الهجمات الكامل (سجل الهجمات)
     updateAllAttacksTable(attacks) {
         const tableBody = document.getElementById('allAttacksTable');
         if (!tableBody) return;
@@ -203,55 +215,56 @@ const dashboard = {
                 <tr>
                     <td colspan="9" class="text-center text-muted">
                         <i class="fas fa-inbox fa-2x mb-3 d-block"></i>
-                        <h5>لا توجد هجمات مسجلة</h5>
-                        <p>لم يتم تسجيل أي هجمات بعد</p>
+                        <h5>لا توجد هجمات مطابقة للمواصفات</h5>
                     </td>
-                </tr>
-            `;
+                </tr>`;
             return;
         }
 
         const startIndex = (this.config.currentPage - 1) * this.config.itemsPerPage;
 
-        tableBody.innerHTML = attacks.map((attack, index) => `
+        tableBody.innerHTML = attacks.map((attack, index) => {
+            const badgeSrc = attack.source === 'ssh' 
+                ? `<span class="badge bg-danger text-white"><i class="fas fa-terminal"></i> SSH</span>` 
+                : `<span class="badge bg-primary text-white"><i class="fas fa-globe"></i> Web</span>`;
+
+            return `
             <tr>
                 <td>${startIndex + index + 1}</td>
                 <td>${this.formatTime(attack.timestamp)}</td>
                 <td>
-                    <code class="ip-address" onclick="dashboard.copyToClipboard('${attack.ip_address}')">
-                        ${attack.ip_address}
-                        <i class="fas fa-copy ms-2"></i>
+                    <code class="ip-address" style="cursor:pointer;" onclick="dashboard.copyToClipboard('${attack.ip_address}')">
+                        ${attack.ip_address} <i class="fas fa-copy ms-1 text-muted small"></i>
                     </code>
+                    <div class="mt-1">${badgeSrc} <span class="text-muted small">${attack.country || ''}</span></div>
                 </td>
-                <td>${attack.country || 'غير معروف'}</td>
-                <td>${attack.city || 'غير معروف'}</td>
                 <td>
                     <span class="attack-badge ${this.getAttackClass(attack.attack_type)}">
                         ${attack.attack_type}
                     </span>
                 </td>
-                <td>${attack.username || 'N/A'}</td>
+                <td><strong class="text-success">${attack.username || 'N/A'}</strong></td>
                 <td>
-                    <span class="password-field">
-                        ${attack.password ? '•'.repeat(Math.min(attack.password.length, 8)) : 'N/A'}
+                    <span class="badge bg-light text-dark font-mono">
+                        ${attack.password || 'N/A'}
                     </span>
                 </td>
-                <td><small>${attack.request_path}</small></td>
+                <td class="text-wrap small" style="max-width: 220px;"><code>${attack.request_path}</code></td>
                 <td>
-                    <span class="badge bg-${attack.request_method === 'GET' ? 'info' : 'success'}">
+                    <span class="badge bg-${attack.request_method === 'GET' ? 'info' : (attack.request_method === 'SSH' ? 'dark' : 'success')}">
                         ${attack.request_method}
                     </span>
                 </td>
                 <td>
-                    <button class="btn btn-sm btn-outline-danger" onclick="dashboard.deleteAttack(${attack.id})">
+                    <button class="btn btn-sm btn-outline-danger" onclick="dashboard.deleteAttack('${attack.id}')">
                         <i class="fas fa-trash"></i>
                     </button>
                 </td>
-            </tr>
-        `).join('');
+            </tr>`;
+        }).join('');
     },
 
-    // تحديث الرسم البياني للساعات
+    // تحديث الرسم البياني للساعات حياً
     updateHourlyChart(data) {
         const ctx = document.getElementById('hourlyChart');
         if (!ctx) return;
@@ -268,31 +281,25 @@ const dashboard = {
             data: {
                 labels: labels,
                 datasets: [{
-                    label: 'عدد الهجمات',
+                    label: 'عدد التهديدات المكتشفة',
                     data: counts,
-                    borderColor: '#4CAF50',
-                    backgroundColor: 'rgba(76, 175, 80, 0.1)',
+                    borderColor: '#dc3545',
+                    backgroundColor: 'rgba(220, 53, 69, 0.1)',
                     fill: true,
                     tension: 0.3
                 }]
             },
             options: {
                 responsive: true,
+                maintainAspectRatio: false,
                 plugins: {
-                    legend: {
-                        rtl: true,
-                        labels: {
-                            font: {
-                                family: 'Cairo, sans-serif'
-                            }
-                        }
-                    }
+                    legend: { rtl: true, labels: { font: { family: 'Cairo, sans-serif' } } }
                 }
             }
         });
     },
 
-    // تحديث رسم توزيع الأنواع
+    // تحديث رسم توزيع الأنواع الدائري
     updateTypeChart(data) {
         const ctx = document.getElementById('typeChart');
         if (!ctx) return;
@@ -312,23 +319,19 @@ const dashboard = {
                     data: counts,
                     backgroundColor: [
                         '#FF6B6B', '#4ECDC4', '#FFD166', '#06D6A0',
-                        '#118AB2', '#EF476F', '#073B4C'
+                        '#118AB2', '#6f42c1', '#073B4C'
                     ]
                 }]
             },
             options: {
                 responsive: true,
-                plugins: {
-                    legend: {
-                        position: 'bottom',
-                        rtl: true
-                    }
-                }
+                maintainAspectRatio: false,
+                plugins: { legend: { position: 'bottom', rtl: true } }
             }
         });
     },
 
-    // تحديث رسم الأسبوع
+    // تحديث رسم الأسبوع البياني للمصيدتين
     updateWeeklyChart(data) {
         const ctx = document.getElementById('weeklyChart');
         if (!ctx) return;
@@ -345,73 +348,62 @@ const dashboard = {
             data: {
                 labels: labels,
                 datasets: [{
-                    label: 'عدد الهجمات',
+                    label: 'إجمالي المحاولات اليومية والـ SSH',
                     data: counts,
-                    backgroundColor: '#667eea'
+                    backgroundColor: '#0d6efd'
                 }]
             },
             options: {
                 responsive: true,
-                plugins: {
-                    legend: {
-                        rtl: true
-                    }
-                }
+                plugins: { legend: { rtl: true } }
             }
         });
     },
 
-    // تحديث قائمة أكثر IPs نشاطاً
+    // تحديث قائمة أعلى 5 مهاجمين نشطين
     updateTopIPsList(data) {
         const container = document.getElementById('topIPsList');
         if (!container) return;
 
         if (data.length === 0) {
-            container.innerHTML = '<p class="text-muted">لا توجد بيانات</p>';
+            container.innerHTML = '<p class="text-muted p-3 text-center">لا توجد بيانات كافية</p>';
             return;
         }
 
-        container.innerHTML = data.map(item => `
+        container.innerHTML = data.map((item, index) => `
             <div class="d-flex justify-content-between align-items-center mb-2 p-2 border-bottom">
                 <div>
+                    <span class="badge bg-secondary me-2">${index + 1}</span>
                     <code>${item.ip}</code>
                 </div>
                 <div>
-                    <span class="badge bg-primary">${item.count}</span>
+                    <span class="badge bg-danger rounded-pill">${item.count} محاولة</span>
                 </div>
             </div>
         `).join('');
     },
 
-    // تحديث الإحصائيات المفصلة
+    // تحديث الإحصائيات المفصلة في شاشة الإحصائيات حياً
     updateDetailedStats() {
         const tableBody = document.getElementById('detailedStatsTable');
         if (!tableBody) return;
 
-        // هذه بيانات تجريبية، يمكنك استبدالها ببيانات حقيقية
-        const detailedData = [
-            { type: 'SQL Injection Attempt', count: this.state.stats.sql_injection || 0 },
-            { type: 'XSS Attempt', count: this.state.stats.xss || 0 },
-            { type: 'Directory Traversal', count: this.state.stats.directory_traversal || 0 },
-            { type: 'Normal Attempt', count: (this.state.stats.today || 0) -
-                (this.state.stats.sql_injection || 0) -
-                (this.state.stats.xss || 0) -
-                (this.state.stats.directory_traversal || 0) }
-        ].filter(item => item.count > 0);
+        axios.get(`${this.config.apiBase}/attacks/by-type`).then(res => {
+            const data = res.data;
+            const total = data.reduce((sum, item) => sum + item.count, 0);
 
-        const total = detailedData.reduce((sum, item) => sum + item.count, 0);
-
-        tableBody.innerHTML = detailedData.map(item => `
-            <tr>
-                <td>${item.type}</td>
-                <td>${item.count}</td>
-                <td>${total > 0 ? ((item.count / total) * 100).toFixed(1) : 0}%</td>
-                <td>--</td>
-            </tr>
-        `).join('');
+            tableBody.innerHTML = data.map(item => `
+                <tr>
+                    <td><strong>${item.type}</strong></td>
+                    <td><span class="badge bg-dark">${item.count}</span></td>
+                    <td>${total > 0 ? ((item.count / total) * 100).toFixed(1) : 0}%</td>
+                    <td><span class="text-success small">نشط حياً <i class="fas fa-circle-notch fa-spin ms-1"></i></span></td>
+                </tr>
+            `).join('');
+        });
     },
 
-    // تحديث الترقيم
+    // تحديث الترقيم الديناميكي للجداول
     updatePagination(total, pages) {
         const container = document.getElementById('pageNumbers');
         if (!container) return;
@@ -426,159 +418,154 @@ const dashboard = {
         }
 
         for (let i = startPage; i <= endPage; i++) {
-            html += `
-                <button class="page-number ${i === this.config.currentPage ? 'active' : ''}"
-                        onclick="dashboard.goToPage(${i})">
-                    ${i}
-                </button>
-            `;
+            if(i > 0) {
+                html += `
+                    <button class="page-number ${i === this.config.currentPage ? 'active' : ''}"
+                            onclick="dashboard.goToPage(${i})">
+                        ${i}
+                    </button>
+                `;
+            }
         }
 
-        container.innerHTML = html;
+        container.innerHTML = html || '<button class="page-number active">1</button>';
     },
 
-    // البحث في الهجمات
+    // البحث الفوري في الهجمات
     async searchAttacks() {
         const searchInput = document.getElementById('searchInput');
         const query = searchInput.value.trim();
 
         if (!query) {
-            this.loadAllAttacksTable();
+            this.loadAllAttacksTable('all');
+            const pag = document.querySelector('.pagination');
+            if (pag) pag.style.display = 'flex';
             return;
         }
 
         try {
-            const response = await axios.get(`${this.config.apiBase}/attacks/search?q=${query}`);
+            const response = await axios.get(`${this.config.apiBase}/attacks/search?q=${encodeURIComponent(query)}`);
             this.updateAllAttacksTable(response.data.attacks);
 
-            // إخفاء الترقيم عند البحث
-            document.querySelector('.pagination').style.display = 'none';
+            const pag = document.querySelector('.pagination');
+            if (pag) pag.style.display = 'none';
 
         } catch (error) {
             console.error('Error searching attacks:', error);
         }
     },
 
-    // تصفية الهجمات حسب النوع
+    // تصفية الهجمات حسب النوع من خلال الـ Dropdown الأصلي الخاص بك
     async filterAttacks() {
         const typeFilter = document.getElementById('typeFilter');
         const type = typeFilter.value;
-
+        this.config.currentPage = 1;
+        
         if (type === 'all') {
-            this.config.currentPage = 1;
-            this.loadAllAttacksTable();
-            return;
-        }
-
-        try {
-            const response = await axios.get(`${this.config.apiBase}/attacks?type=${type}`);
-            this.updateAllAttacksTable(response.data.attacks);
-
-            // إخفاء الترقيم عند التصفية
-            document.querySelector('.pagination').style.display = 'none';
-
-        } catch (error) {
-            console.error('Error filtering attacks:', error);
+            this.loadAllAttacksTable('all');
+            const pag = document.querySelector('.pagination');
+            if (pag) pag.style.display = 'flex';
+        } else {
+            this.loadAllAttacksTable(type);
+            const pag = document.querySelector('.pagination');
+            if (pag) pag.style.display = 'none';
         }
     },
 
-    // الذهاب لصفحة محددة
     goToPage(page) {
         this.config.currentPage = page;
-        this.loadAllAttacksTable();
+        const typeFilter = document.getElementById('typeFilter');
+        this.loadAllAttacksTable(typeFilter ? typeFilter.value : 'all');
     },
 
-    // الصفحة السابقة
     prevPage() {
         if (this.config.currentPage > 1) {
             this.goToPage(this.config.currentPage - 1);
         }
     },
 
-    // الصفحة التالية
     nextPage() {
         this.goToPage(this.config.currentPage + 1);
     },
 
-    // حذف هجوم
+    // حذف هجوم مع مراعاة حماية أدلة كاوري الجنائية
     async deleteAttack(id) {
-        if (!confirm('هل أنت متأكد من حذف هذا الهجوم؟')) return;
+        if (!confirm('هل أنت متأكد من حذف هذا السجل الجنائي؟')) return;
 
         try {
-            await axios.delete(`${this.config.apiBase}/attacks/${id}`);
-            this.showAlert('تم حذف الهجوم بنجاح', 'success');
-            this.loadAllAttacksTable();
-            this.loadStats();
+            const response = await axios.delete(`${this.config.apiBase}/attacks/${id}`);
+            this.showAlert(response.data.message, 'success');
+            this.loadAllData();
+            
+            const typeFilter = document.getElementById('typeFilter');
+            this.loadAllAttacksTable(typeFilter ? typeFilter.value : 'all');
         } catch (error) {
-            console.error('Error deleting attack:', error);
-            this.showAlert('خطأ في حذف الهجوم', 'danger');
+            if (error.response && error.response.status === 403) {
+                this.showAlert('⚠️ لا يمكن حذف سجلات SSH (Cowrie) حمايةً للأدلة الجنائية للأجهزة الرقمية.', 'danger');
+            } else {
+                this.showAlert('خطأ في إتمام عملية الحذف للوق المختار', 'danger');
+            }
         }
     },
 
-    // مسح جميع الهجمات
+    // مسح لوقات الويب وتصفيرها
     async clearAllAttacks() {
-        if (!confirm('⚠️ تحذير: سيتم مسح جميع الهجمات المسجلة. هل أنت متأكد؟')) return;
+        if (!confirm('⚠️ تحذير أمني: سيتم تفريغ مسارات هجمات الويب بالكامل ومسحها من الـ Database. هل أنت متأكد؟')) return;
 
         try {
             const response = await axios.post(`${this.config.apiBase}/attacks/clear`);
             this.showAlert(response.data.message, 'success');
             this.loadAllData();
+            this.loadAllAttacksTable('all');
         } catch (error) {
             console.error('Error clearing attacks:', error);
-            this.showAlert('خطأ في مسح الهجمات', 'danger');
+            this.showAlert('خطأ أثناء عملية مسح السجلات', 'danger');
         }
     },
 
-    // تبديل الأقسام
+    // التنقل الذكي بين الأقسام الـ 5 القديمة كما هي في شريطك الجانبي
     showSection(sectionId) {
-        // إخفاء جميع الأقسام
         document.querySelectorAll('.dashboard-section').forEach(section => {
             section.classList.remove('active');
         });
 
-        // إزالة النشط من جميع الأزرار
-        document.querySelectorAll('.menu-btn').forEach(btn => {
+        document.querySelectorAll('.sidebar-menu .menu-btn').forEach(btn => {
             btn.classList.remove('active');
         });
 
-        // إظهار القسم المطلوب
         const section = document.getElementById(sectionId);
         if (section) {
             section.classList.add('active');
         }
 
-        // تفعيل الزر المطلوب
-        const buttons = document.querySelectorAll('.menu-btn');
+        // تفعيل الخيار المقابل هندسياً في القائمة الجانبية الأصلية
+        const buttons = document.querySelectorAll('.sidebar-menu .menu-btn');
         buttons.forEach(btn => {
-            if (btn.textContent.includes(this.getSectionName(sectionId))) {
+            if (btn.getAttribute('onclick').includes(sectionId)) {
                 btn.classList.add('active');
             }
         });
 
-        // تحميل بيانات القسم إذا لزم
+        // تشغيل التحميل المخصص للقسم المختار فوراُ
         if (sectionId === 'attacks') {
             this.config.currentPage = 1;
-            this.loadAllAttacksTable();
+            const typeFilter = document.getElementById('typeFilter');
+            if(typeFilter) typeFilter.value = 'all';
+            this.loadAllAttacksTable('all');
         } else if (sectionId === 'statistics') {
             this.loadTopIPs();
             this.updateDetailedStats();
         } else if (sectionId === 'realtime') {
-            this.startLiveUpdates();
+            this.updateLiveData();
         }
     },
 
-    // مسح قاعدة البيانات
+    // مسح قاعدة البيانات من التبويب الخامس (Settings)
     async clearDatabase() {
-        if (!confirm('⚠️ تحذير: سيتم مسح قاعدة البيانات بالكامل. هل أنت متأكد؟')) return;
-
-        try {
-            await this.clearAllAttacks();
-        } catch (error) {
-            console.error('Error clearing database:', error);
-        }
+        await this.clearAllAttacks();
     },
 
-    // حفظ الإعدادات
+    // حفظ إعدادات التنبيهات محلياً
     saveSettings() {
         const settings = {
             alertSQL: document.getElementById('alertSQL').checked,
@@ -587,30 +574,34 @@ const dashboard = {
         };
 
         localStorage.setItem('honeypotSettings', JSON.stringify(settings));
-        this.showAlert('تم حفظ الإعدادات', 'success');
+        this.showAlert('تم حفظ الإعدادات الأمنية للتنبيهات بنجاح', 'success');
     },
 
-    // تحميل الإعدادات
+    // تحميل التنبيهات المحفوظة مسبقاً للواجهة
     loadSettings() {
         const saved = localStorage.getItem('honeypotSettings');
         if (saved) {
             const settings = JSON.parse(saved);
-            document.getElementById('alertSQL').checked = settings.alertSQL;
-            document.getElementById('alertXSS').checked = settings.alertXSS;
-            document.getElementById('alertTraversal').checked = settings.alertTraversal;
+            if (document.getElementById('alertSQL')) document.getElementById('alertSQL').checked = settings.alertSQL;
+            if (document.getElementById('alertXSS')) document.getElementById('alertXSS').checked = settings.alertXSS;
+            if (document.getElementById('alertTraversal')) document.getElementById('alertTraversal').checked = settings.alertTraversal;
         }
     },
 
-    // بدء التحديثات التلقائية
+    // بدء المراقبة التلقائية الحية (Live Monitoring System)
     startAutoRefresh() {
         if (this.refreshInterval) clearInterval(this.refreshInterval);
 
         this.refreshInterval = setInterval(() => {
-            const activeSection = document.querySelector('.dashboard-section.active').id;
+            const activeSec = document.querySelector('.dashboard-section.active');
+            if (!activeSec) return;
+            const activeSection = activeSec.id;
+
+            // تحديث البطاقات والشارات العلوية دائماً في الخلفية
+            this.loadStats();
 
             switch(activeSection) {
                 case 'overview':
-                    this.loadStats();
                     this.loadRecentAttacks();
                     break;
                 case 'realtime':
@@ -622,7 +613,6 @@ const dashboard = {
         }, this.config.refreshInterval);
     },
 
-    // إيقاف التحديثات التلقائية
     stopAutoRefresh() {
         if (this.refreshInterval) {
             clearInterval(this.refreshInterval);
@@ -630,22 +620,25 @@ const dashboard = {
         }
     },
 
-    // تحديث البيانات الحية
+    // تحديث تبويب الـ Realtime (القسم المباشر) ليعرض اللوق التفاعلي للـ Web والـ SSH معاً
     async updateLiveData() {
         try {
             const response = await axios.get(`${this.config.apiBase}/attacks/recent?limit=10`);
             this.state.liveAttacks = response.data;
             this.updateLiveFeed();
 
-            // تحديث الإحصائيات الحية
+            // تحديث العدادات الحية في تبويب "مباشر" الأصلي
             this.updateElement('liveAttacksNow', this.state.liveAttacks.length);
+            this.updateElement('liveIPs', [...new Set(this.state.liveAttacks.map(a => a.ip_address))].length);
+            this.updateElement('liveRequests', Math.floor(this.state.liveAttacks.length * 1.5));
+            this.updateElement('liveThreats', this.state.liveAttacks.filter(a => a.attack_type !== 'Normal Attempt').length);
 
         } catch (error) {
             console.error('Error updating live data:', error);
         }
     },
 
-    // تحديث البث المباشر
+    // تعبئة الـ Feed المباشر داخل واجهة الـ Realtime
     updateLiveFeed() {
         const feed = document.getElementById('liveFeed');
         if (!feed) return;
@@ -654,74 +647,65 @@ const dashboard = {
             feed.innerHTML = `
                 <div class="text-center p-4 text-muted">
                     <i class="fas fa-comment-slash fa-2x mb-3"></i>
-                    <p>لا توجد هجمات حالية</p>
-                </div>
-            `;
+                    <p>لا توجد هجمات ملتقطة حالياً حية في قنوات الرصد</p>
+                </div>`;
             return;
         }
 
-        feed.innerHTML = this.state.liveAttacks.map(attack => `
-            <div class="live-attack">
-                <div class="d-flex justify-content-between">
+        feed.innerHTML = this.state.liveAttacks.map(attack => {
+            const isSSH = attack.source === 'ssh';
+            const badgeColor = isSSH ? 'bg-danger' : 'bg-primary';
+            const icon = isSSH ? 'fa-terminal' : 'fa-globe';
+
+            return `
+            <div class="live-attack p-3 mb-2 border rounded bg-white shadow-sm" style="border-right: 4px solid ${isSSH ? '#dc3545' : '#0d6efd'} !important;">
+                <div class="d-flex justify-content-between align-items-center">
                     <div>
-                        <strong>${attack.ip_address}</strong>
-                        <span class="badge ${this.getAttackClass(attack.attack_type)} ms-2">
-                            ${attack.attack_type}
+                        <strong class="font-mono text-dark">${attack.ip_address}</strong>
+                        <span class="badge ${badgeColor} ms-2">
+                            <i class="fas ${icon} me-1"></i> ${attack.attack_type}
                         </span>
                     </div>
-                    <small>${this.formatTime(attack.timestamp)}</small>
+                    <small class="text-muted"><i class="fas fa-clock me-1"></i> ${this.formatTime(attack.timestamp)}</small>
                 </div>
-                <div class="mt-2">
-                    <small class="text-muted">
-                        ${attack.username || 'N/A'} • ${attack.request_path}
-                    </small>
+                <div class="mt-2 text-secondary small">
+                    <span><strong>المستخدم المستهدف:</strong> ${attack.username || 'N/A'}</span> &bull; 
+                    <span><strong>الحمولة / المسار:</strong> <code class="text-dark">${attack.request_path}</code></span>
                 </div>
-            </div>
-        `).join('');
-
-        // التمرير للأعلى لعرض أحدث الهجمات
-        feed.scrollTop = 0;
+            </div>`;
+        }).join('');
     },
 
-    // تحديث الوقت
     updateTime() {
         const now = new Date();
-        const timeString = now.toLocaleString('ar-SA', {
-            hour: '2-digit',
-            minute: '2-digit',
-            second: '2-digit'
-        });
-
+        const timeString = now.toLocaleTimeString('ar-SA');
         this.updateElement('currentTime', timeString);
     },
 
-    // تحديث وقت آخر تحديث
     updateLastUpdateTime() {
         const now = new Date();
-        const timeString = now.toLocaleString('ar-SA', {
-            hour: '2-digit',
-            minute: '2-digit'
-        });
-
+        const timeString = now.toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' });
         this.updateElement('lastUpdateTime', timeString);
     },
 
-    // نسخ إلى الحافظة
     copyToClipboard(text) {
         navigator.clipboard.writeText(text).then(() => {
-            this.showAlert('تم النسخ إلى الحافظة', 'success');
+            this.showAlert(`تم نسخ عنوان IP [${text}] بنجاح`, 'success');
         }).catch(() => {
-            this.showAlert('فشل النسخ', 'danger');
+            this.showAlert('فشل النسخ التلقائي للحافظة', 'danger');
         });
     },
 
-    // تحديث جميع البيانات
     refreshAll() {
+        const footerStatus = document.getElementById('footerStatus');
+        if (footerStatus) footerStatus.innerText = "جاري جلب القنوات والبيانات فورياً...";
         this.loadAllData();
-        this.showAlert('تم تحديث البيانات', 'info');
+        const activeSec = document.querySelector('.dashboard-section.active');
+        if (activeSec) {
+            this.showSection(activeSec.id);
+        }
     },
 
-    // تحديث عنصر في الواجهة
     updateElement(id, value) {
         const element = document.getElementById(id);
         if (element) {
@@ -729,63 +713,47 @@ const dashboard = {
         }
     },
 
-    // عرض تنبيه
     showAlert(message, type = 'info') {
         const alert = document.createElement('div');
-        alert.className = `alert alert-${type} alert-dismissible fade show`;
+        alert.className = `alert alert-${type} alert-dismissible fade show shadow-sm position-fixed top-0 start-50 translate-middle-x mt-3`;
+        alert.style.zIndex = '9999';
         alert.innerHTML = `
-            ${message}
+            <i class="fas fa-info-circle me-2"></i> ${message}
             <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
         `;
 
-        // إزالة التنبيهات القديمة
         const oldAlerts = document.querySelectorAll('.alert');
         oldAlerts.forEach(a => a.remove());
 
-        // إضافة التنبيه الجديد
-        const container = document.querySelector('.container-fluid');
-        container.insertBefore(alert, container.firstChild);
+        document.body.appendChild(alert);
 
-        // إزالة التنبيه بعد 3 ثواني
         setTimeout(() => {
             if (alert.parentNode) {
                 alert.remove();
             }
-        }, 3000);
+        }, 3500);
     },
 
-    // تنسيق الوقت
     formatTime(dateString) {
-        const date = new Date(dateString);
-        return date.toLocaleString('ar-SA', {
-            hour: '2-digit',
-            minute: '2-digit'
-        });
+        if(!dateString) return '--:--';
+        try {
+            const date = new Date(dateString);
+            return date.toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        } catch {
+            return dateString;
+        }
     },
 
-    // الحصول على كلاس الهجوم
     getAttackClass(attackType) {
         if (attackType.includes('SQL')) return 'badge-sql';
         if (attackType.includes('XSS')) return 'badge-xss';
         if (attackType.includes('Traversal')) return 'badge-traversal';
+        if (attackType.includes('SSH')) return 'bg-danger text-white';
         return 'badge-normal';
-    },
-
-    // الحصول على اسم القسم
-    getSectionName(sectionId) {
-        const names = {
-            'overview': 'نظرة عامة',
-            'attacks': 'سجل الهجمات',
-            'statistics': 'الإحصائيات',
-            'realtime': 'مباشر',
-            'settings': 'الإعدادات'
-        };
-
-        return names[sectionId] || sectionId;
     }
 };
 
-// تهيئة Dashboard عند تحميل الصفحة
+// تهيئة Dashboard عند تحميل الصفحة الكاملة
 document.addEventListener('DOMContentLoaded', function() {
     dashboard.init();
     dashboard.loadSettings();

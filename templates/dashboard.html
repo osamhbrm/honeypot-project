@@ -5,520 +5,353 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>لوحة تحكم Honeypot</title>
 
-    <!-- مكتبات CSS -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 
-    <!-- CSS الخاص بنا -->
     <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
 
-    <!-- مكتبات JavaScript -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
 </head>
 <body>
-    <!-- شريط التنقل -->
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
-        <div class="container">
-            <a class="navbar-brand" href="/dashboard">
-                <i class="fas fa-shield-alt me-2"></i>
-                <span>Honeypot Dashboard</span>
+        <div class="container-fluid px-4">
+            <a class="navbar-brand d-flex align-items-center" href="/dashboard">
+                <i class="fas fa-shield-alt me-2 text-primary"></i>
+                <span class="ms-2">Honeypot Dashboard</span>
             </a>
 
             <div class="d-flex align-items-center">
-                <!-- حالة النظام -->
-                <div class="system-status me-3">
-                    <span class="status-dot active"></span>
-                    <span class="status-text">النظام نشط</span>
+                <div class="text-light me-4 font-mono small d-none d-sm-block">
+                    <i class="far fa-clock me-1"></i> <span id="currentTime">--:--:--</span>
                 </div>
 
-                <!-- الوقت الحي -->
-                <div class="live-time me-3 text-white">
-                    <i class="fas fa-clock me-1"></i>
-                    <span id="currentTime">--:--:--</span>
+                <div class="form-check form-switch text-light me-3 mb-0">
+                    <input class="form-check-input" type="checkbox" id="liveToggle" checked>
+                    <label class="form-check-label small" for="liveToggle">تحديث حي مباشر</label>
                 </div>
 
-                <!-- زر التحديث -->
-                <button class="btn btn-outline-light" onclick="dashboard.refreshAll()">
-                    <i class="fas fa-sync-alt me-1"></i>
-                    تحديث
+                <button class="btn btn-outline-light btn-sm" onclick="dashboard.refreshAll()">
+                    <i class="fas fa-sync-alt me-1"></i> تحديث
                 </button>
             </div>
         </div>
     </nav>
 
-    <!-- المحتوى الرئيسي -->
-    <div class="container-fluid mt-4">
+    <div class="container-fluid">
         <div class="row">
-            <!-- الشريط الجانبي -->
-            <div class="col-lg-2">
-                <div class="sidebar">
-                    <!-- معلومات النظام -->
-                    <div class="system-info mb-4">
-                        <h5><i class="fas fa-info-circle me-2"></i>معلومات النظام</h5>
-                        <div class="info-item">
-                            <span>الهجمات الكلية:</span>
-                            <strong id="totalAttacksBadge">0</strong>
-                        </div>
-                        <div class="info-item">
-                            <span>هجمات اليوم:</span>
-                            <strong id="todayAttacksBadge">0</strong>
-                        </div>
-                        <div class="info-item">
-                            <span>آخر تحديث:</span>
-                            <small id="lastUpdateTime">--:--</small>
-                        </div>
+            
+            <div class="col-md-3 col-lg-2 sidebar px-0 bg-dark">
+                <div class="p-3 border-bottom border-secondary text-center">
+                    <div class="status-indicator d-flex align-items-center justify-content-center">
+                        <span class="status-dot active"></span>
+                        <span class="text-light small ms-2">نظام الرصد نشط</span>
                     </div>
+                </div>
 
-                    <!-- القائمة -->
-                    <div class="sidebar-menu">
-                        <button class="menu-btn active" onclick="dashboard.showSection('overview')">
-                            <i class="fas fa-tachometer-alt me-2"></i>
-                            نظرة عامة
-                        </button>
-
-                        <button class="menu-btn" onclick="dashboard.showSection('attacks')">
-                            <i class="fas fa-history me-2"></i>
-                            سجل الهجمات
-                        </button>
-
-                        <button class="menu-btn" onclick="dashboard.showSection('statistics')">
-                            <i class="fas fa-chart-bar me-2"></i>
-                            الإحصائيات
-                        </button>
-
-                        <button class="menu-btn" onclick="dashboard.showSection('realtime')">
-                            <i class="fas fa-bolt me-2"></i>
-                            مباشر
-                        </button>
-
-                        <button class="menu-btn" onclick="dashboard.showSection('settings')">
-                            <i class="fas fa-cog me-2"></i>
-                            الإعدادات
-                        </button>
+                <div class="sidebar-stats p-3 text-light border-bottom border-secondary small">
+                    <div class="d-flex justify-content-between mb-1">
+                        <span>إجمالي الهجمات:</span>
+                        <span id="totalAttacksBadge" class="badge bg-primary">0</span>
                     </div>
-
-                    <!-- روابط سريعة -->
-                    <div class="quick-links mt-4">
-                        <h6><i class="fas fa-link me-2"></i>روابط سريعة</h6>
-                        <a href="/" class="quick-link" target="_blank">
-                            <i class="fas fa-home me-2"></i>الرئيسية
-                        </a>
-                        <a href="/login" class="quick-link" target="_blank">
-                            <i class="fas fa-sign-in-alt me-2"></i>صفحة الدخول
-                        </a>
-                        <a href="/admin" class="quick-link" target="_blank">
-                            <i class="fas fa-lock me-2"></i>لوحة التحكم
-                        </a>
+                    <div class="d-flex justify-content-between">
+                        <span>هجمات اليوم:</span>
+                        <span id="todayAttacksBadge" class="badge bg-danger">0</span>
                     </div>
+                </div>
+
+                <div class="sidebar-menu p-2">
+                    <button class="menu-btn active" onclick="dashboard.showSection('overview')">
+                        <i class="fas fa-tachometer-alt me-2"></i>نظرة عامة
+                    </button>
+                    <button class="menu-btn" onclick="dashboard.showSection('attacks')">
+                        <i class="fas fa-history me-2"></i>سجل الهجمات
+                    </button>
+                    <button class="menu-btn" onclick="dashboard.showSection('statistics')">
+                        <i class="fas fa-chart-bar me-2"></i>الإحصائيات
+                    </button>
+                    <button class="menu-btn" onclick="dashboard.showSection('realtime')">
+                        <i class="fas fa-broadcast-tower me-2"></i>مباشر
+                    </button>
+                    <button class="menu-btn" onclick="dashboard.showSection('settings')">
+                        <i class="fas fa-cog me-2"></i>الإعدادات
+                    </button>
+                </div>
+
+                <div class="quick-links p-3 text-white-50 small mt-4">
+                    <h6 class="text-uppercase small text-muted border-bottom border-secondary pb-1">أدوات سريعة</h6>
+                    <a href="/" class="text-white-50 text-decoration-none d-block my-2" target="_blank"><i class="fas fa-link me-1"></i> واجهة الويب</a>
+                    <a href="/api/export/csv" class="text-success text-decoration-none d-block my-2"><i class="fas fa-file-csv me-1"></i> تحميل ملف CSV</a>
                 </div>
             </div>
 
-            <!-- المحتوى الرئيسي -->
-            <div class="col-lg-10">
-                <!-- قسم النظرة العامة -->
-                <div class="dashboard-section active" id="overview">
-                    <h2 class="mb-4">
-                        <i class="fas fa-tachometer-alt me-2"></i>
-                        نظرة عامة
-                    </h2>
-
-                    <!-- بطاقات الإحصائيات -->
-                    <div class="row mb-4">
+            <div class="col-md-9 col-lg-10 main-content p-4">
+                
+                <div id="overview" class="dashboard-section active">
+                    <h4 class="mb-4 text-dark font-weight-bold">نظرة عامة على الأنظمة المدمجة</h4>
+                    
+                    <div class="row g-3 mb-4">
                         <div class="col-md-3">
-                            <div class="stat-card">
-                                <div class="stat-icon">
-                                    <i class="fas fa-bug"></i>
-                                </div>
-                                <div class="stat-content">
-                                    <div class="stat-number" id="totalAttacks">0</div>
-                                    <div class="stat-label">إجمالي الهجمات</div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="col-md-3">
-                            <div class="stat-card">
-                                <div class="stat-icon">
-                                    <i class="fas fa-calendar-day"></i>
-                                </div>
-                                <div class="stat-content">
-                                    <div class="stat-number" id="todayAttacks">0</div>
-                                    <div class="stat-label">هجمات اليوم</div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="col-md-3">
-                            <div class="stat-card">
-                                <div class="stat-icon">
-                                    <i class="fas fa-database"></i>
-                                </div>
-                                <div class="stat-content">
-                                    <div class="stat-number" id="sqlAttacks">0</div>
-                                    <div class="stat-label">هجمات SQL</div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="col-md-3">
-                            <div class="stat-card">
-                                <div class="stat-icon">
-                                    <i class="fas fa-code"></i>
-                                </div>
-                                <div class="stat-content">
-                                    <div class="stat-number" id="xssAttacks">0</div>
-                                    <div class="stat-label">هجمات XSS</div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- الرسوم البيانية -->
-                    <div class="row mb-4">
-                        <div class="col-md-8">
-                            <div class="chart-container">
-                                <h5><i class="fas fa-chart-line me-2"></i>الهجمات خلال 24 ساعة</h5>
-                                <canvas id="hourlyChart"></canvas>
-                            </div>
-                        </div>
-
-                        <div class="col-md-4">
-                            <div class="chart-container">
-                                <h5><i class="fas fa-chart-pie me-2"></i>توزيع الهجمات</h5>
-                                <canvas id="typeChart"></canvas>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- آخر الهجمات -->
-                    <div class="row">
-                        <div class="col-12">
-                            <div class="table-container">
-                                <div class="table-header">
-                                    <h5><i class="fas fa-history me-2"></i>آخر الهجمات</h5>
-                                    <button class="btn btn-sm btn-outline-primary" onclick="dashboard.showSection('attacks')">
-                                        عرض الكل
-                                    </button>
-                                </div>
-                                <div class="table-responsive">
-                                    <table class="table">
-                                        <thead>
-                                            <tr>
-                                                <th>الوقت</th>
-                                                <th>IP</th>
-                                                <th>نوع الهجوم</th>
-                                                <th>اسم المستخدم</th>
-                                                <th>المسار</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody id="recentAttacksTable">
-                                            <!-- سيتم ملؤها بالبيانات -->
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- قسم سجل الهجمات -->
-                <div class="dashboard-section" id="attacks">
-                    <h2 class="mb-4">
-                        <i class="fas fa-history me-2"></i>
-                        سجل الهجمات
-                    </h2>
-
-                    <!-- أدوات البحث والتصفية -->
-                    <div class="row mb-4">
-                        <div class="col-md-6">
-                            <div class="input-group">
-                                <input type="text" id="searchInput" class="form-control" placeholder="بحث عن IP أو اسم مستخدم...">
-                                <button class="btn btn-primary" onclick="dashboard.searchAttacks()">
-                                    <i class="fas fa-search"></i>
-                                </button>
-                            </div>
-                        </div>
-
-                        <div class="col-md-6">
-                            <div class="row">
-                                <div class="col">
-                                    <select class="form-select" id="typeFilter" onchange="dashboard.filterAttacks()">
-                                        <option value="all">جميع الأنواع</option>
-                                        <option value="SQL Injection Attempt">هجمات SQL</option>
-                                        <option value="XSS Attempt">هجمات XSS</option>
-                                        <option value="Directory Traversal">Directory Traversal</option>
-                                        <option value="SSRF Attempt">هجمات SSRF</option>
-                                        <option value="CRLF Injection Attempt">هجمات CRLF</option>
-                                        <option value="Default Credentials Attempt">بيانات افتراضية</option>
-                                        <option value="Normal Attempt">عادية</option>
-                                    </select>
-                                </div>
-                                <div class="col">
-                                    <button class="btn btn-danger" onclick="dashboard.clearAllAttacks()">
-                                        <i class="fas fa-trash me-1"></i>مسح الكل
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- جدول الهجمات -->
-                    <div class="row">
-                        <div class="col-12">
-                            <div class="table-container">
-                                <div class="table-responsive">
-                                    <table class="table">
-                                        <thead>
-                                            <tr>
-                                                <th>#</th>
-                                                <th>الوقت</th>
-                                                <th>IP Address</th>
-                                                <th>الدولة</th>
-                                                <th>المدينة</th>
-                                                <th>نوع الهجوم</th>
-                                                <th>اسم المستخدم</th>
-                                                <th>كلمة المرور</th>
-                                                <th>المسار</th>
-                                                <th>الطريقة</th>
-                                                <th>الإجراءات</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody id="allAttacksTable">
-                                            <!-- سيتم ملؤها بالبيانات -->
-                                        </tbody>
-                                    </table>
-                                </div>
-
-                                <!-- الترقيم -->
-                                <div class="pagination">
-                                    <button class="btn btn-outline-secondary" onclick="dashboard.prevPage()">
-                                        <i class="fas fa-chevron-right"></i>
-                                    </button>
-
-                                    <div class="page-numbers" id="pageNumbers">
-                                        <!-- سيتم ملؤها بالبيانات -->
+                            <div class="card stat-card p-3 shadow-sm bg-white border-start border-primary border-4">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <h2 id="totalAttacks" class="mb-0 font-weight-bold font-mono">0</h2>
+                                        <span class="text-muted small">إجمالي الهجمات المرصودة</span>
                                     </div>
-
-                                    <button class="btn btn-outline-secondary" onclick="dashboard.nextPage()">
-                                        <i class="fas fa-chevron-left"></i>
-                                    </button>
+                                    <i class="fas fa-shield-virus fa-2x text-primary opacity-50"></i>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card stat-card p-3 shadow-sm bg-white border-start border-danger border-4">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <h2 id="todayAttacks" class="mb-0 font-weight-bold font-mono">0</h2>
+                                        <span class="text-muted small">هجمات اليوم</span>
+                                    </div>
+                                    <i class="fas fa-bolt fa-2x text-danger opacity-50"></i>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card stat-card p-3 shadow-sm bg-white border-start border-warning border-4">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <h2 id="sqlAttacks" class="mb-0 font-weight-bold font-mono">0</h2>
+                                        <span class="text-muted small">هجمات SQL Injection</span>
+                                    </div>
+                                    <i class="fas fa-database fa-2x text-warning opacity-50"></i>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card stat-card p-3 shadow-sm bg-white border-start border-info border-4">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <h2 id="xssAttacks" class="mb-0 font-weight-bold font-mono">0</h2>
+                                        <span class="text-muted small">هجمات XSS المكتشفة</span>
+                                    </div>
+                                    <i class="fas fa-code fa-2x text-info opacity-50"></i>
                                 </div>
                             </div>
                         </div>
                     </div>
-                </div>
 
-                <!-- قسم الإحصائيات -->
-                <div class="dashboard-section" id="statistics">
-                    <h2 class="mb-4">
-                        <i class="fas fa-chart-bar me-2"></i>
-                        الإحصائيات
-                    </h2>
-
-                    <!-- المزيد من الإحصائيات -->
-                    <div class="row mb-4">
-                        <div class="col-md-6">
-                            <div class="chart-container">
-                                <h5><i class="fas fa-chart-bar me-2"></i>الهجمات خلال الأسبوع</h5>
-                                <canvas id="weeklyChart"></canvas>
+                    <div class="row g-3 mb-4">
+                        <div class="col-lg-8">
+                            <div class="card p-3 shadow-sm bg-white h-100">
+                                <h6 class="text-muted mb-3"><i class="fas fa-chart-line text-danger me-1"></i> التهديدات خلال الساعات الأخيرة</h6>
+                                <div style="position: relative; height: 260px;"><canvas id="hourlyChart"></canvas></div>
                             </div>
                         </div>
-
-                        <div class="col-md-6">
-                            <div class="chart-container">
-                                <h5><i class="fas fa-globe me-2"></i>أكثر IPs نشاطاً</h5>
-                                <div id="topIPsList">
-                                    <!-- سيتم ملؤها بالبيانات -->
-                                </div>
+                        <div class="col-lg-4">
+                            <div class="card p-3 shadow-sm bg-white h-100">
+                                <h6 class="text-muted mb-3"><i class="fas fa-chart-pie text-primary me-1"></i> توزيع تصنيفات التهديد</h6>
+                                <div style="position: relative; height: 260px;"><canvas id="typeChart"></canvas></div>
                             </div>
                         </div>
                     </div>
 
-                    <!-- إحصائيات مفصلة -->
-                    <div class="row">
-                        <div class="col-md-12">
-                            <div class="table-container">
-                                <h5><i class="fas fa-list-alt me-2"></i>إحصائيات مفصلة</h5>
-                                <table class="table">
-                                    <thead>
-                                        <tr>
-                                            <th>نوع الهجوم</th>
-                                            <th>العدد</th>
-                                            <th>النسبة</th>
-                                            <th>آخر هجوم</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="detailedStatsTable">
-                                        <!-- سيتم ملؤها بالبيانات -->
+                    <div class="card shadow-sm border-0 bg-white">
+                        <div class="card-header bg-white font-weight-bold py-3 text-secondary border-0">
+                            <i class="fas fa-stream text-success me-1"></i> أحدث الأحداث الجنائية الملتقطة
+                        </div>
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>الوقت</th>
+                                        <th>العنوان والمصدر</th>
+                                        <th>نوع المحاولة</th>
+                                        <th>المستخدم</th>
+                                        <th>المسار / الأمر المنفذ</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="recentAttacksTable">
                                     </tbody>
-                                </table>
-                            </div>
+                            </table>
                         </div>
                     </div>
                 </div>
 
-                <!-- قسم المباشر -->
-                <div class="dashboard-section" id="realtime">
-                    <h2 class="mb-4">
-                        <i class="fas fa-bolt me-2"></i>
-                        المراقبة المباشرة
-                    </h2>
-
-                    <!-- إحصائيات حية -->
-                    <div class="row mb-4">
-                        <div class="col-md-3">
-                            <div class="live-stat">
-                                <div class="live-stat-icon">
-                                    <i class="fas fa-shield-alt"></i>
-                                </div>
-                                <div class="live-stat-content">
-                                    <div class="live-stat-number" id="liveAttacksNow">0</div>
-                                    <div class="live-stat-label">هجمات الآن</div>
+                <div id="attacks" class="dashboard-section">
+                    <h4 class="mb-4 text-dark font-weight-bold">سجل التحقيقات والمحاولات الكامل</h4>
+                    
+                    <div class="card p-3 mb-4 bg-light border-0 shadow-sm">
+                        <div class="row g-3">
+                            <div class="col-md-5">
+                                <div class="input-group input-group-sm">
+                                    <input type="text" id="searchInput" class="form-control" placeholder="ابحث عن عنوان IP أو مستخدم..." oninput="dashboard.searchAttacks()">
+                                    <span class="input-group-text bg-white"><i class="fas fa-search text-muted"></i></span>
                                 </div>
                             </div>
-                        </div>
-
-                        <div class="col-md-3">
-                            <div class="live-stat">
-                                <div class="live-stat-icon">
-                                    <i class="fas fa-network-wired"></i>
-                                </div>
-                                <div class="live-stat-content">
-                                    <div class="live-stat-number" id="liveRequests">0</div>
-                                    <div class="live-stat-label">طلبات/دقيقة</div>
-                                </div>
+                            <div class="col-md-4">
+                                <select id="typeFilter" class="form-select form-select-sm" onchange="dashboard.filterAttacks()">
+                                    <option value="all">كل قنوات الرصد والمصائد</option>
+                                    <option value="SQL Injection Attempt">SQL Injection (الويب)</option>
+                                    <option value="XSS Attempt">XSS Attempt (الويب)</option>
+                                    <option value="Directory Traversal">Directory Traversal (الويب)</option>
+                                    <option value="SSH Bruteforce Attempt">SSH Bruteforce (كاوري)</option>
+                                    <option value="SSH Command Execution">SSH الأوامر الملتقطة (كاوري)</option>
+                                </select>
                             </div>
-                        </div>
-
-                        <div class="col-md-3">
-                            <div class="live-stat">
-                                <div class="live-stat-icon">
-                                    <i class="fas fa-users"></i>
-                                </div>
-                                <div class="live-stat-content">
-                                    <div class="live-stat-number" id="liveIPs">0</div>
-                                    <div class="live-stat-label">IPs نشطة</div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="col-md-3">
-                            <div class="live-stat">
-                                <div class="live-stat-icon">
-                                    <i class="fas fa-exclamation-triangle"></i>
-                                </div>
-                                <div class="live-stat-content">
-                                    <div class="live-stat-number" id="liveThreats">0</div>
-                                    <div class="live-stat-label">تهديدات/دقيقة</div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- التحديث المباشر -->
-                    <div class="row">
-                        <div class="col-12">
-                            <div class="live-feed">
-                                <div class="live-feed-header">
-                                    <h5><i class="fas fa-stream me-2"></i>الهجمات المباشرة</h5>
-                                    <div class="live-toggle">
-                                        <span class="me-2">مباشر:</span>
-                                        <div class="form-check form-switch">
-                                            <input class="form-check-input" type="checkbox" id="liveToggle" checked>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="live-feed-content" id="liveFeed">
-                                    <!-- سيتم ملؤها بالبيانات -->
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- قسم الإعدادات -->
-                <div class="dashboard-section" id="settings">
-                    <h2 class="mb-4">
-                        <i class="fas fa-cog me-2"></i>
-                        الإعدادات
-                    </h2>
-
-                    <div class="row">
-                        <div class="col-md-6">
-                            <div class="settings-card">
-                                <h5><i class="fas fa-database me-2"></i>إعدادات قاعدة البيانات</h5>
-
-                                <div class="mb-3">
-                                    <label class="form-label">حجم قاعدة البيانات:</label>
-                                    <div class="input-group">
-                                        <input type="text" class="form-control" id="dbSize" readonly>
-                                        <span class="input-group-text">KB</span>
-                                    </div>
-                                </div>
-
-                                <div class="mb-3">
-                                    <label class="form-label">عدد السجلات:</label>
-                                    <input type="text" class="form-control" id="totalRecords" readonly>
-                                </div>
-
-                                <button class="btn btn-danger" onclick="dashboard.clearDatabase()">
-                                    <i class="fas fa-trash me-1"></i>مسح قاعدة البيانات
+                            <div class="col-md-3 text-end">
+                                <button class="btn btn-sm btn-outline-danger" onclick="dashboard.clearAllAttacks()">
+                                    <i class="fas fa-trash-alt me-1"></i> مسح لوقات الويب
                                 </button>
                             </div>
                         </div>
+                    </div>
 
+                    <div class="card shadow-sm border-0 bg-white">
+                        <div class="table-responsive">
+                            <table class="table table-striped table-hover align-middle mb-0">
+                                <thead class="table-dark">
+                                    <tr>
+                                        <th>#</th>
+                                        <th>الوقت والتاريخ</th>
+                                        <th>العنوان ومعلومات الدولة</th>
+                                        <th>نوع التهديد</th>
+                                        <th>المستخدم</th>
+                                        <th>كلمة المرور</th>
+                                        <th>المسار / الـ Payload</th>
+                                        <th>البروتوكول</th>
+                                        <th>إجراء</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="allAttacksTable">
+                                    </tbody>
+                            </table>
+                        </div>
+                        
+                        <div class="card-footer bg-white d-flex justify-content-between align-items-center py-3 border-0">
+                            <button class="btn btn-sm btn-outline-secondary px-3" onclick="dashboard.prevPage()">السابق</button>
+                            <div id="pageNumbers" class="pagination-numbers d-flex gap-1">
+                                </div>
+                            <button class="btn btn-sm btn-outline-secondary px-3" onclick="dashboard.nextPage()">التالي</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="statistics" class="dashboard-section">
+                    <h4 class="mb-4 text-dark font-weight-bold">التقارير التحليلية والخرائط الزمنية</h4>
+                    <div class="row g-3">
+                        <div class="col-md-7">
+                            <div class="card p-3 shadow-sm bg-white">
+                                <h6 class="text-muted mb-3"><i class="fas fa-chart-bar me-1 text-primary"></i> منحنى الهجمات والتهديدات اليومية</h6>
+                                <div style="position: relative; height: 300px;"><canvas id="weeklyChart"></canvas></div>
+                            </div>
+                        </div>
+                        <div class="col-md-5">
+                            <div class="card p-3 shadow-sm bg-white h-100">
+                                <h6 class="text-muted mb-3"><i class="fas fa-fire me-1 text-danger"></i> أعلى عناوين IP مهاجمة للمنظومة</h6>
+                                <div id="topIPsList" class="p-2">
+                                    </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card mt-4 shadow-sm border-0 bg-white">
+                        <div class="card-header bg-white font-weight-bold border-0 py-3">تحليل النسب المئوية لكثافة الاستهداف حياً</div>
+                        <div class="table-responsive">
+                            <table class="table table-hover mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>نوع الهجوم</th>
+                                        <th>عدد المحاولات</th>
+                                        <th>النسبة من الإجمالي</th>
+                                        <th>حالة قناة الرصد</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="detailedStatsTable">
+                                    </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="realtime" class="dashboard-section">
+                    <h4 class="mb-2 text-dark font-weight-bold">قناة البث المباشر الفوري للتهديدات</h4>
+                    <p class="text-muted small mb-4">يعرض هذا القسم تدفقات الهجمات والأوامر الملتقطة فور حدوثها على الخادم وبدون تأخير.</p>
+
+                    <div class="row g-3 mb-4">
+                        <div class="col-6 col-md-3">
+                            <div class="card p-3 shadow-sm text-center bg-dark text-light">
+                                <h3 id="liveAttacksNow" class="font-mono mb-0 text-warning">0</h3>
+                                <small class="text-white-50">أحداث حية حالياً</small>
+                            </div>
+                        </div>
+                        <div class="col-6 col-md-3">
+                            <div class="card p-3 shadow-sm text-center bg-white border">
+                                <h3 id="liveIPs" class="font-mono mb-0 text-primary">0</h3>
+                                <small class="text-muted">عناوين IP فريدة</small>
+                            </div>
+                        </div>
+                        <div class="col-6 col-md-3">
+                            <div class="card p-3 shadow-sm text-center bg-white border">
+                                <h3 id="liveRequests" class="font-mono mb-0 text-success">0</h3>
+                                <small class="text-muted">معدل طلبات النظام / د</small>
+                            </div>
+                        </div>
+                        <div class="col-6 col-md-3">
+                            <div class="card p-3 shadow-sm text-center bg-white border">
+                                <h3 id="liveThreats" class="font-mono mb-0 text-danger">0</h3>
+                                <small class="text-muted">مؤشرات اختراق حرجة</small>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card p-3 shadow-sm bg-light border-0">
+                        <div id="liveFeed" class="live-feed-container" style="max-height: 450px; overflow-y: auto;">
+                            </div>
+                    </div>
+                </div>
+
+                <div id="settings" class="dashboard-section">
+                    <h4 class="mb-4 text-dark font-weight-bold">إدارة النظام والأدوات الجنائية</h4>
+                    <div class="row g-3">
                         <div class="col-md-6">
-                            <div class="settings-card">
-                                <h5><i class="fas fa-bell me-2"></i>إعدادات التنبيهات</h5>
-
+                            <div class="card p-4 shadow-sm bg-white border-0 h-100">
+                                <h5 class="text-dark font-weight-bold mb-3"><i class="fas fa-bell text-primary me-1"></i> إعدادات التنبيهات المحلية</h5>
                                 <div class="form-check mb-3">
                                     <input class="form-check-input" type="checkbox" id="alertSQL" checked>
-                                    <label class="form-check-label" for="alertSQL">
-                                        تنبيه عند هجمات SQL
-                                    </label>
+                                    <label class="form-check-label" for="alertSQL">تنبيه فوري عند رصد محاولات SQL Injection</label>
                                 </div>
-
                                 <div class="form-check mb-3">
                                     <input class="form-check-input" type="checkbox" id="alertXSS" checked>
-                                    <label class="form-check-label" for="alertXSS">
-                                        تنبيه عند هجمات XSS
-                                    </label>
+                                    <label class="form-check-label" for="alertXSS">تنبيه فوري عند رصد هجمات الـ XSS</label>
                                 </div>
-
                                 <div class="form-check mb-3">
                                     <input class="form-check-input" type="checkbox" id="alertTraversal" checked>
-                                    <label class="form-check-label" for="alertTraversal">
-                                        تنبيه عند Directory Traversal
-                                    </label>
+                                    <label class="form-check-label" for="alertTraversal">تنبيه فوري عند رصد ثغرات ومحاولات الـ Traversal</label>
                                 </div>
-
-                                <button class="btn btn-primary" onclick="dashboard.saveSettings()">
-                                    <i class="fas fa-save me-1"></i>حفظ الإعدادات
-                                </button>
+                                <button class="btn btn-primary btn-sm px-4 mt-2" onclick="dashboard.saveSettings()"><i class="fas fa-save me-1"></i> حفظ الإعدادات</button>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <div class="card p-4 shadow-sm bg-white border-0 h-100 border-start border-danger border-4">
+                                <h5 class="text-danger font-weight-bold mb-3"><i class="fas fa-database me-1"></i> سلامة البيانات وسجلات التخزين</h5>
+                                <p class="text-muted small">يمكنك مسح وتصفير سجلات هجمات الويب المحلية (SQLite). علماً بأن لوقات كاوري الافتراضية محمية بشكل كامل لحفظ الأدلة الجنائية للأجهزة الرقمية ولا يمكن مسحها من واجهة الويب.</p>
+                                <button class="btn btn-danger btn-sm px-4 mt-2" onclick="dashboard.clearDatabase()"><i class="fas fa-dumpster me-1"></i> تصفير قاعدة بيانات الويب بالكامل</button>
                             </div>
                         </div>
                     </div>
                 </div>
+
             </div>
         </div>
     </div>
 
-    <!-- Footer -->
-    <footer class="footer mt-4">
-        <div class="container">
-            <div class="row">
-                <div class="col-md-6">
-                    <p>نظام Honeypot &copy; 2024</p>
-                </div>
-                <div class="col-md-6 text-end">
-                    <p id="footerStatus">جاري التحميل...</p>
-                </div>
+    <footer class="footer bg-light py-3 mt-5 border-top">
+        <div class="container-fluid px-4">
+            <div class="row small">
+                <div class="col-md-6 text-muted">نظام Honeypot الاستخباراتي الهجين &copy; 2026</div>
+                <div class="col-md-6 text-md-end text-success font-weight-bold" id="footerStatus">جاري تحديث قنوات البيانات...</div>
             </div>
         </div>
     </footer>
 
-    <!-- JavaScript الخاص بنا -->
     <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
 </body>
 </html>

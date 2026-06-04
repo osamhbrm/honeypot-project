@@ -1,0 +1,26 @@
+version: '3.8'
+
+services:
+  # مصيدة الـ SSH (كاوري) تستمع على بورت 22 الخارجي
+  cowrie:
+    image: cowrie/cowrie:latest
+    ports:
+      - "2222:2222"
+    volumes:
+      - cowrie-data:/cowrie/cowrie-git/var/log/cowrie
+
+  # تطبيق الفلاسك (المصيدة والداشبورد)
+  flask-honeypot:
+    build: .
+    ports:
+      - "80:5000"
+      - "5000:5000"
+    volumes:
+      - cowrie-data:/app/cowrie_logs:ro
+    environment:
+      - FLASK_ENV=development
+    depends_on:
+      - cowrie
+
+volumes:
+  cowrie-data:
